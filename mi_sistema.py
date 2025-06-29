@@ -1,3 +1,27 @@
+import sqlite3
+from datetime import datetime  
+
+def crear_base_datos():
+    conn = sqlite3.connect("inventario.db")
+    cursor = conn.cursor()
+
+    cursor.execute('''
+
+        CREATE TABLE IF NOT EXISTS productos (
+                   
+                   id INTEGER PRIMARY KEY AUTOINCREMENT,
+                   nombre TEXT NOT NULL,
+                   precio REAL NOT NULL,
+                   cantidad INTEGER NOT NULL,
+                   fecha TEXT
+
+                   )
+     ''')
+    
+    conn.commit()
+    conn.close()
+    print("Base de datos creada")
+
 
 productos = []
 
@@ -7,43 +31,72 @@ def agregar_producto():
     precio = float(input("Ingrese el precio del producto: "))
     cantidad = int(input("Ingrese la cantidad en stock: "))
 
-    producto = {
-        "nombre": nombre,
-        "precio": precio,
-        "cantidad": cantidad 
-    }
+    conn = sqlite3.connect("inventario.db")
+    cursor = conn.cursor()
 
-    productos.append(producto)
+    fecha = datetime.now().strftime("%Y=%m-%d %H:%M")
+
+    cursor.execute('''
+        INSERT INTO productos(nombre,precio,cantidad,fecha)
+        VALUES (?,?,?,?)
+    ''' , (nombre,precio,cantidad,fecha))
+
+    conn.commit()
+    conn.close()
+    
     print(f"Producto {nombre} agregado exitosamente.")
 
 def mostrar_productos():
 
-    if len(productos) == 0:
+    conn = sqlite3.connect("inventario.db")
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT id, nombre, precio, cantidad, fecha FROM productos")
+    productos_db = cursor.fetchall()
+
+    conn.close()
+
+    if len(productos_db) == 0:
         print("No hay productos en el inventario")
         return
     
-    print("\n === INVENTARIO ===")
-    for i, producto in enumerate(productos,1):
-        print(f"{i}. {producto['nombre']}")
-        print(f"    Precio: ${producto['precio']}")
-        print (f"   Cantidad: {producto['cantidad']}")
-        print("-" * 20)
+    print("\n === INVENTARIO (desde db)===")
+    for producto in productos_db:
+        id_prod, nombre, precio, cantidad, fecha = producto
+        print(f"ID: {id_prod} - {nombre}")
+        print(f"    Precio: ${precio}")
+        print (f"   Cantidad: {cantidad}")
+        print(f"    Fecha: {fecha}")
+        print("-" * 30)
 
 def calcular_valor_total():
-    if len(productos) == 0:
+
+    conn = sqlite3.connect("inventario.db")
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT nombre, precio, cantidad FROM productos")
+    productos_db = cursor.fetchall()
+
+    conn.close()
+
+    if len(productos_db) == 0:
         print("No hay productos para calcular")
         return 0
     
     total = 0
-    for producto in productos:
-        valor_producto = producto['precio'] * producto['cantidad']
+    for producto in productos_db:
+
+        nombre, precio, cantidad = producto
+        valor_producto = precio * cantidad
         total += valor_producto
+
     print(f"\n VALOR TOTAL DEL INVENTARIO: ${total:,.2f}")
     print("-" * 40)
     return total
 
 
 def main():
+    crear_base_datos()
     while True:
         print("=== Sistema de Inventario ===")
         print("1. Agregar producto")
